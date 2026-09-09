@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Application {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,6 +29,8 @@ public class Application {
     @ManyToOne
     @JoinColumn(name = "candidate_id")
     @JsonIgnoreProperties("applications")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Candidate candidate;
 
     private String resumeUrl;
@@ -33,6 +38,8 @@ public class Application {
     @ManyToOne
     @JoinColumn(name = "job_id")
     @JsonIgnoreProperties("applications")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Job job;
 
     @CreationTimestamp

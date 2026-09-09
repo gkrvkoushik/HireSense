@@ -5,8 +5,11 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -15,7 +18,8 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Job {
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+public class Job implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +31,8 @@ public class Job {
 
     @OneToMany(mappedBy = "job")
     @JsonIgnoreProperties("job")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<Application> applications;
 
     private String role;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/logo.png';
 import '../Landing/Landing.css';
 
@@ -9,36 +10,19 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    try {
-      const response = await fetch('/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
+    const result = await login(email, password);
 
-      const result = await response.json();
-
-      if (result.statusCode === 200) {
-        // Save token and user details to localStorage
-        localStorage.setItem('token', result.data.token);
-        localStorage.setItem('user', JSON.stringify(result.data.user));
-        
-        // Redirect to dashboard or home
-        navigate('/dashboard');
-      } else {
-        setError(result.message || 'Login failed. Please check your credentials.');
-      }
-    } catch (err) {
-      setError('An error occurred during login. Please try again.');
-    } finally {
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message || 'Login failed. Please check your credentials.');
       setLoading(false);
     }
   };

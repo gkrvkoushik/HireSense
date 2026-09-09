@@ -8,6 +8,7 @@ import com.backend.repositories.ApplicationRepository;
 import com.backend.repositories.JobRepository;
 import com.backend.repositories.RecruiterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,7 +30,20 @@ public class RecruiterService {
 //        return recruiterRepository.save(recruiter);
 //    }
 
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    public RecruiterService(RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
+    private static final String JOBS_KEY_CACHE="jobs:all";
+
     public Job createJob(Job job){
+        try {
+            redisTemplate.delete(JOBS_KEY_CACHE);
+        } catch (Exception e) {
+            System.err.println("Redis cache eviction failed on job creation: " + e.getMessage());
+        }
         return jobRepository.save(job);
     }
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { apiFetch } from '../../utils/api';
 import logo from '../../assets/logo.png';
 import '../Landing/Landing.css';
 
@@ -49,10 +50,9 @@ const Register = () => {
         formData.append('candidate', JSON.stringify(candidateDetails));
         formData.append('resume', resume);
 
-        const response = await fetch('/auth/register/candidate', {
+        const response = await apiFetch('/auth/register/candidate', {
           method: 'POST',
           body: formData
-          // Note: fetch automatically sets the boundary for FormData. Do NOT manually specify Content-Type header.
         });
 
         const result = await response.json();
@@ -71,11 +71,8 @@ const Register = () => {
           designation
         };
 
-        const response = await fetch('/auth/register/recruiter', {
+        const response = await apiFetch('/auth/register/recruiter', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify(recruiterDetails)
         });
 

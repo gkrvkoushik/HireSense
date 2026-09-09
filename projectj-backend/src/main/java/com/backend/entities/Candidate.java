@@ -6,6 +6,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
+
 import java.util.List;
 
 @Entity
@@ -13,6 +16,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Candidate {
 
     @Id
@@ -33,6 +37,8 @@ public class Candidate {
 
     @OneToMany(mappedBy = "candidate")
     @JsonIgnoreProperties("candidate")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<Application> applications;
 
     @OneToOne

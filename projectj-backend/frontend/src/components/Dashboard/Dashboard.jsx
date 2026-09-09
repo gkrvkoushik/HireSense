@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { apiFetch as globalApiFetch } from '../../utils/api';
 import logo from '../../assets/logo.png';
 import '../Landing/Landing.css';
 
 const Dashboard = () => {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,70 +31,55 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (!token || !storedUser) {
+    if (!user) {
       navigate('/login');
       return;
     }
+    fetchData(user);
+  }, [user]);
 
-    const parsedUser = JSON.parse(storedUser);
-    setUser(parsedUser);
+  const apiFetch = async (url, options = {}) => {
+    try {
+      const res = await globalApiFetch(url, options);
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        navigate('/login');
+        return null;
+      }
+      return res;
+    } catch (err) {
+      console.error("API call error:", err);
+      return null;
+    }
+  };
 
-    fetchData(token, parsedUser);
-  }, []);
-
-  const fetchData = async (token, userObj) => {
+  const fetchData = async (userObj) => {
     setLoading(true);
     setError('');
-
     try {
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
       if (userObj.role === 'CANDIDATE') {
-        // Fetch candidate profile
-        const profileRes = await fetch('/candidate/profile', { headers });
+        const profileRes = await apiFetch('/candidate/profile');
+        if (!profileRes) return;
         const profileResult = await profileRes.json();
-
         if (profileResult.statusCode === 200) {
           setProfile(profileResult.data);
-          
-          // Fetch jobs
-          const jobsRes = await fetch('/candidate/get-all-jobs', { headers });
-          const jobsResult = await jobsRes.json();
-          if (jobsResult.statusCode === 200) {
-            setJobs(jobsResult.data);
-          }
-
-          // Fetch candidate applications
-          const appsRes = await fetch(`/candidate/get-all-applications/${profileResult.data.id}`, { headers });
-          const appsResult = await appsRes.json();
-          if (appsResult.statusCode === 200) {
-            setApplications(appsResult.data);
-          }
+          const [jobsRes, appsRes] = await Promise.all([
+            apiFetch('/candidate/get-all-jobs'),
+            apiFetch(`/candidate/get-all-applications/${profileResult.data.id}`)
+          ]);
+          if (jobsRes) { const r = await jobsRes.json(); if (r.statusCode === 200) setJobs(r.data); }
+          if (appsRes) { const r = await appsRes.json(); if (r.statusCode === 200) setApplications(r.data); }
         } else {
           setError('Failed to fetch candidate profile');
         }
       } else if (userObj.role === 'RECRUITER') {
-        // Fetch recruiter profile
-        const profileRes = await fetch('/recruiter/profile', { headers });
+        const profileRes = await apiFetch('/recruiter/profile');
+        if (!profileRes) return;
         const profileResult = await profileRes.json();
-
         if (profileResult.statusCode === 200) {
           setProfile(profileResult.data);
-
-          // Fetch recruiter posted jobs
-          const jobsRes = await fetch(`/recruiter/get-jobs-posted/${profileResult.data.id}`, { headers });
-          const jobsResult = await jobsRes.json();
-          if (jobsResult.statusCode === 200) {
-            setPostedJobs(jobsResult.data);
-          } else {
-            setPostedJobs([]);
-          }
+          const jobsRes = await apiFetch(`/recruiter/get-jobs-posted/${profileResult.data.id}`);
+          if (jobsRes) { const r = await jobsRes.json(); if (r.statusCode === 200) setPostedJobs(r.data); else setPostedJobs([]); }
         } else {
           setError('Failed to fetch recruiter profile');
         }
@@ -104,38 +91,28 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const handleLogout = async () => {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    }
+    logout();
     navigate('/');
   };
 
   // Candidate: Apply for a job
   const handleApply = async (jobId) => {
-    const token = localStorage.getItem('token');
-    if (!token || !profile) return;
+    if (!profile) return;
 
     setApplyLoading(prev => ({ ...prev, [jobId]: true }));
-
     try {
-      const response = await fetch(`/candidate/apply-job/${profile.id}/${jobId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
+      const response = await apiFetch(`/candidate/apply-job/${profile.id}/${jobId}`, { method: 'POST' });
+      if (!response) return;
       const result = await response.json();
-
       if (result.statusCode === 200) {
-        // Refresh candidate applications
-        const appsRes = await fetch(`/candidate/get-all-applications/${profile.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const appsResult = await appsRes.json();
-        if (appsResult.statusCode === 200) {
-          setApplications(appsResult.data);
-        }
+        const appsRes = await apiFetch(`/candidate/get-all-applications/${profile.id}`);
+        if (appsRes) { const r = await appsRes.json(); if (r.statusCode === 200) setApplications(r.data); }
         alert('Applied successfully!');
       } else {
         alert(result.message || 'Application failed.');
@@ -150,11 +127,9 @@ const Dashboard = () => {
   // Recruiter: Post a Job
   const handlePostJob = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    if (!token || !profile) return;
+    if (!profile) return;
 
     setPostJobLoading(true);
-
     try {
       const jobData = {
         role: newJobRole,
@@ -162,33 +137,17 @@ const Dashboard = () => {
         skills: newJobSkills.split(',').map(s => s.trim()).filter(s => s.length > 0),
         experience: parseInt(newJobExp, 10) || 0
       };
-
-      const response = await fetch('/recruiter/post-job', {
+      const response = await apiFetch('/recruiter/post-job', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(jobData)
       });
-
+      if (!response) return;
       const result = await response.json();
-
       if (result.statusCode === 200) {
-        // Refresh posted jobs list
-        const jobsRes = await fetch(`/recruiter/get-jobs-posted/${profile.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const jobsResult = await jobsRes.json();
-        if (jobsResult.statusCode === 200) {
-          setPostedJobs(jobsResult.data);
-        }
-
-        // Reset form and close modal
-        setNewJobRole('');
-        setNewJobDesc('');
-        setNewJobSkills('');
-        setNewJobExp('');
+        const jobsRes = await apiFetch(`/recruiter/get-jobs-posted/${profile.id}`);
+        if (jobsRes) { const r = await jobsRes.json(); if (r.statusCode === 200) setPostedJobs(r.data); }
+        setNewJobRole(''); setNewJobDesc(''); setNewJobSkills(''); setNewJobExp('');
         setShowPostJobModal(false);
         alert('Job posted successfully!');
       } else {
@@ -203,30 +162,15 @@ const Dashboard = () => {
 
   // Recruiter: Update application status
   const handleStatusUpdate = async (appId, newStatus) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
 
     setStatusUpdateLoading(prev => ({ ...prev, [appId]: true }));
-
     try {
-      const response = await fetch(`/recruiter/update-status/${appId}?applicationStatus=${newStatus}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
+      const response = await apiFetch(`/recruiter/update-status/${appId}?applicationStatus=${newStatus}`, { method: 'PATCH' });
+      if (!response) return;
       const result = await response.json();
-
       if (result.statusCode === 200) {
-        // Refresh posted jobs (to get updated application status)
-        const jobsRes = await fetch(`/recruiter/get-jobs-posted/${profile.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const jobsResult = await jobsRes.json();
-        if (jobsResult.statusCode === 200) {
-          setPostedJobs(jobsResult.data);
-        }
+        const jobsRes = await apiFetch(`/recruiter/get-jobs-posted/${profile.id}`);
+        if (jobsRes) { const r = await jobsRes.json(); if (r.statusCode === 200) setPostedJobs(r.data); }
       } else {
         alert(result.message || 'Failed to update application status.');
       }

@@ -13,10 +13,12 @@ import com.backend.repositories.UserRepository;
 import com.backend.services.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -58,28 +60,38 @@ public class AuthController {
         return Response.<Recruiter>builder().message("Recruiter registered successfully").statusCode(200).data(recruiter).build();
     }
 
+    @Value("${jwt.expiration}")
+    private int jwtExpiration;
+
     @PostMapping("/login")
-    public Response<Map<String,Object>> loginUser(@RequestBody UserRequest userRequest) {
+    public Response<java.util.Map<String, Object>> loginUser(@RequestBody UserRequest userRequest, HttpServletResponse response) {
         String token = authService.login(userRequest);
-        if(token == null){
-            return Response.<Map<String, Object>>builder()
-                    .message("Login Failed")
-                    .statusCode(400)
-                    .data(null)
-                    .build();
+        if (token == null) {
+            return Response.<java.util.Map<String, Object>>builder().message("Login Failed").statusCode(400).data(null).build();
         }
 
+        Cookie cookie = new Cookie("jwt", token);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(jwtExpiration / 1000);
+        response.addCookie(cookie);
+
         User userInDb = userRepository.findByEmail(userRequest.getEmail());
+        java.util.Map<String, Object> data = java.util.Map.of(
+            "user", userInDb,
+            "token", token
+        );
+        return Response.<java.util.Map<String, Object>>builder().message("Login Success").statusCode(200).data(data).build();
+    }
 
-        Map<String, Object> responseData = new HashMap<>();
-        responseData.put("token", token);
-        responseData.put("user", userInDb);
-
-        return Response.<Map<String, Object>>builder()
-                .message("Login Success")
-                .statusCode(200)
-                .data(responseData)
-                .build();
+    @PostMapping("/logout")
+    public Response<Void> logout(HttpServletResponse response) {
+        Cookie cookie = new Cookie("jwt", "");
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+        return Response.<Void>builder().message("Logged out successfully").statusCode(200).data(null).build();
     }
 
 }

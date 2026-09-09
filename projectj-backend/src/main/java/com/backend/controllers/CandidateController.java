@@ -7,6 +7,7 @@ import com.backend.entities.Response;
 import com.backend.repositories.CandidateRepository;
 import com.backend.services.CandidateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +32,7 @@ public class CandidateController {
     @Autowired
     private CandidateService candidateService;
 
+
     @PostMapping("/apply-job/{candidate_id}/{job_id}")
     public Response<Application> applyJob(@PathVariable("candidate_id") int candidate_id, @PathVariable("job_id") int job_id) {
         Application application = null;
@@ -53,6 +55,7 @@ public class CandidateController {
         if(jobs.isEmpty()){
             return Response.<List<Job>>builder().message("No jobs found").statusCode(400).data(null).build();
         }
+        //simulateDBCall();
         return Response.<List<Job>>builder().message("Jobs found").statusCode(200).data(jobs).build();
     }
 
@@ -73,6 +76,19 @@ public class CandidateController {
             return Response.<Candidate>builder().message("Profile not found").statusCode(400).data(null).build();
         }
         return Response.<Candidate>builder().message("Profile found").statusCode(200).data(candidate).build();
+    }
+
+    private void simulateDBCall(){
+        try{
+            System.out.println("Thread Name :"+Thread.currentThread().getName());
+            System.out.println("Thread ID :"+Thread.currentThread().getId());
+            Thread.sleep(500);
+
+        }catch(Exception e){
+            Thread.currentThread().interrupt();
+
+            e.printStackTrace();
+        }
     }
 
 }
