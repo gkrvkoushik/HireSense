@@ -1,6 +1,10 @@
   # HireSense - Unified Full-Stack Job Application Platform
 
-  HireSense (Project-J) is a premium full-stack job board platform built with Spring Boot (Backend) and React (Frontend) that connects recruiters with candidates. 
+<🚀 LIVE DEMO: "https://my-project-fade8.web.app/" (https://my-project-fade8.web.app/)
+
+Explore the deployed HireSense application: Experience the full-stack job portal with separate Candidate and Recruiter workflows, JWT authentication, job management, and application tracking.
+
+---
 
   ## 🏗️ Architecture
 
