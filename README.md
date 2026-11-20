@@ -1,11 +1,5 @@
  # HireSense - Unified Full-Stack Job Application Platform
 
-<🚀 LIVE DEMO:
-
-https://my-project-fade8.web.app
-
-Explore the deployed HireSense application: Experience the full-stack job portal with separate Candidate and Recruiter workflows, JWT authentication, job management, and application tracking.
-
 ---
 
   ## 🏗️ Architecture
